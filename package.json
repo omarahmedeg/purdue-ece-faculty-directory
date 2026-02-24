@@ -11,10 +11,10 @@
   "author": "",
   "license": "ISC",
   "dependencies": {
-    "express": "*",
-    "cors": "*",
     "cheerio": "*",
-    "node-fetch": "*",
-    "natural": "*"
+    "cors": "*",
+    "express": "*",
+    "natural": "*",
+    "node-fetch": "*"
   }
 }
