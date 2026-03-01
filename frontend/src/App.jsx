@@ -7,10 +7,12 @@ export default function App() {
   const [results, setResults] = useState([]);
   const [loading, setLoading] = useState(false);
   const [error, setError] = useState(null);
+  const [hasSearched, setHasSearched] = useState(false);
 
   async function handleSearch(e) {
     e.preventDefault();
     if (!query.trim()) return;
+    setHasSearched(true);
     setLoading(true);
     setError(null);
     try {
@@ -89,7 +91,7 @@ export default function App() {
           <hr className="separator" />
         </form>
         {error && <p className="message error">{error}</p>}
-        {!error && results.length === 0 && !loading && query && (
+        {hasSearched && !error && results.length === 0 && !loading && (
           <p className="message">No faculty found.</p>
         )}
         {results.length > 0 && (
