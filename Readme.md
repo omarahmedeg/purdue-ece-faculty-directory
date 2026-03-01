@@ -1,20 +1,30 @@
-# Purdue ECE Faculty Backend
+# Purdue ECE Faculty Search
 
-A simple Node.js backend used to collect and serve faculty data for the Purdue ECE project.
+A full-stack app for searching for faculty in the [Elmore Family School of Electrical and Computer Engineering](https://engineering.purdue.edu/ECE/People/Faculty) at Purdue University. The backend scrapes faculty data and enriches it with publication info from OpenAlex. The frontend includes a search UI that provides informoation about faculty research areas websites, and recent publications.
 
-This repository contains a minimal server and a scraper script.
+## Project structure
 
-Files
+- **`backend/`** — Node.js (Express) API that scrapes Purdue ECE faculty pages and fetches OpenAlex publication data.
+- **`frontend/`** — React (Vite) app for searching by name or research area and viewing results.
 
-- `server.js` — Express-style HTTP server (serves API endpoints).
-- `scraper.js` — Script that scrapes faculty information and stores it locally.
+## Frontend
 
-Quick start
+- Search by **name** or **research area**
+- Results show name (linked to personal website when available), research areas, and recent publications
+- Proxies `/api` to the backend (see `frontend/vite.config.js`)
 
-1. Install dependencies:
+## Backend
 
-   npm install
+- **Scrapes** [Purdue ECE Faculty](https://engineering.purdue.edu/ECE/People/Faculty): name, profile URL, personal website, research areas.
+- **Enriches** results with recent publications from [OpenAlex](https://openalex.org/) (in background after startup).
+- **Endpoints:**
+  - `GET /api/faculty/search/name?query=...` — Basic search by name.
+  - `GET /api/faculty/search/research?query=...` — Basic search by research area.
+  - `GET /api/faculty/search/extensive/name?query=...` — Name search with publications (returns 503 until scholar data is ready).
+  - `GET /api/faculty/search/extensive/research?query=...` — Research-area search with publications.
+  - `GET /api/faculty/refresh` — Rescrape faculty data and refresh in-memory cache.
 
-2. Run the server:
+## Tech stack
 
-   node server.js
+- **Backend:** Node.js, Express, Cheerio (scraping), node-fetch, natural (stemming), OpenAlex API
+- **Frontend:** React, Vite
