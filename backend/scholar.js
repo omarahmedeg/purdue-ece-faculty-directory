@@ -4,6 +4,28 @@ const OA_BASE = "https://api.openalex.org";
 const PURDUE_ID = "I219193219";
 const MAILTO = "mailto=scholar-tool@purdue.edu";
 
+/**
+ * Manual Google Scholar user-ID overrides for professors whose names are not
+ * matched correctly by the OpenAlex heuristic.
+ * Key   = exact faculty name as it appears in facultyData[i].name
+ * Value = Google Scholar user= query parameter
+ */
+export const SCHOLAR_ID_OVERRIDES = {
+  "Stanislaw H. Zak": "AFuo5foAAAAJ",
+  "Arnold Chung-Ye Chen": "e3JrBMIAAAAJ",
+  "Can Wu": "y9K8qzkAAAAJ",
+  "Doosan Back": "pIXPFcUAAAAJ",
+  "Ali Shakouri": "9nsAf-sAAAAJ",
+  "Younghyun Kim": "ac0WJaEAAAAJ",
+  "Lu Su": "38RuCN4AAAAJ",
+  "Vikram Jain": "uYVMSsEAAAAJ",
+  "Chaoyue Liu": "sRjoMX0AAAAJ",
+  "Byunghoo Jung": "vL-XiVAAAAAJ",
+  "Junjie Qin": "k2y63QMAAAAJ",
+  "Michael Manfra": "kM2BBwkAAAAJ",
+  "Gesualdo Scutari": "CKsVJugAAAAJ",
+};
+
 const JUNK_TITLE_PATTERNS = [
   /^ieee computer society/i,
   /^ieee comp\.? soc/i,
@@ -189,7 +211,111 @@ async function fetchAuthorPapers(authorId, startYear) {
   return [...seen.values()].sort((a, b) => (b.year || 0) - (a.year || 0));
 }
 
+/**
+ * Fetch recent papers from a Google Scholar profile page.
+ * Parses the public citations list sorted by date.
+ * @param {string} scholarId  - The `user=` value from the Scholar URL
+ * @param {number} startYear  - Only include papers >= this year
+ * @returns {Promise<Array>}
+ */
+export async function fetchScholarPapers(scholarId, startYear) {
+  const allPapers = [];
+  let start = 0;
+  const pageSize = 100;
+
+  while (true) {
+    const url =
+      `https://scholar.google.com/citations?user=${scholarId}&hl=en` +
+      `&view_op=list_works&sortby=pubdate&cstart=${start}&pagesize=${pageSize}`;
+
+    try {
+      const res = await fetch(url, {
+        headers: {
+          "User-Agent":
+            "Mozilla/5.0 (compatible; PurdueECEDirectoryBot/1.0; +https://engineering.purdue.edu)",
+          "Accept-Language": "en-US,en;q=0.9",
+        },
+      });
+
+      if (!res.ok) {
+        console.warn(`  Scholar fetch HTTP ${res.status} for ${scholarId}`);
+        break;
+      }
+
+      const html = await res.text();
+      const cheerio = await import("cheerio");
+      const $ = cheerio.load(html);
+
+      const rows = $("tr.gsc_a_tr");
+      if (rows.length === 0) break;
+
+      let foundOld = false;
+      rows.each((_, row) => {
+        const titleEl = $(row).find("a.gsc_a_at");
+        const title = titleEl.text().trim();
+        if (!title || isJunkTitle(title)) return;
+
+        const yearText = $(row).find(".gsc_a_y span").text().trim();
+        const year = yearText ? parseInt(yearText, 10) : null;
+
+        if (year && year < startYear) {
+          foundOld = true;
+          return false; // break .each — list is sorted newest-first
+        }
+
+        const href = titleEl.attr("href") || "";
+        const paperUrl = href
+          ? `https://scholar.google.com${href}`
+          : `https://scholar.google.com/citations?user=${scholarId}`;
+
+        const venue = $(row).find(".gs_gray").last().text().trim() ||
+          $(row).find(".gsc_a_j .gs_gray").text().trim();
+
+        const citedByText = $(row).find(".gsc_a_c a").text().trim();
+        const citedBy = citedByText ? parseInt(citedByText, 10) || 0 : 0;
+
+        allPapers.push({
+          title,
+          url: paperUrl,
+          meta: venue || (year ? String(year) : ""),
+          year: year || null,
+          citedBy,
+        });
+      });
+
+      // If the page had fewer rows than pageSize, or we hit old papers, stop
+      if (rows.length < pageSize || foundOld) break;
+      start += pageSize;
+      await delay(500); // be polite to Google
+    } catch (err) {
+      console.warn(`  Scholar scrape error for ${scholarId}: ${err.message}`);
+      break;
+    }
+  }
+
+  // Deduplicate by title
+  const seen = new Map();
+  for (const paper of allPapers) {
+    const key = paper.title.toLowerCase().trim().replace(/\s+/g, " ");
+    const existing = seen.get(key);
+    if (!existing || (paper.citedBy || 0) > (existing.citedBy || 0)) {
+      seen.set(key, paper);
+    }
+  }
+
+  return [...seen.values()].sort((a, b) => (b.year || 0) - (a.year || 0));
+}
+
 async function fetchProfessorPapers(professorName, startYear) {
+  // Check for a manual Google Scholar ID override first
+  const scholarId = SCHOLAR_ID_OVERRIDES[professorName];
+  if (scholarId) {
+    console.log(`  Using Google Scholar override (${scholarId}) for "${professorName}"`);
+    const papers = await fetchScholarPapers(scholarId, startYear);
+    if (papers.length > 0) return papers;
+    console.log(`  Scholar override returned 0 papers, falling back to OpenAlex...`);
+  }
+
   try {
     const authorId = await findOpenAlexAuthorId(professorName);
     if (!authorId) {
