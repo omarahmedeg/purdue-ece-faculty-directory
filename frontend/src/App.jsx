@@ -16,7 +16,8 @@ export default function App() {
     setHasSearched(true);
     setLoading(true);
     setError(null);
-    const API_BASE = "http://localhost:8080";
+    const API_BASE =
+      "https://purdue-ece-faculty-1059389140575.us-central1.run.app";
     try {
       const extensiveEndpoint =
         searchType === "name"
