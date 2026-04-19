@@ -1,4 +1,5 @@
 import { useState } from "react";
+import { wildcardQueryToRegex } from "@shared/wildcardPattern.js";
 import bannerImage from "../bannerImage.png";
 
 /** Strip role tags in parentheses (e.g. "area chair") so cards show personal names only. */
@@ -20,12 +21,27 @@ function facultyDisplayName(raw) {
 /** Name search must match the visible name only, not hidden role text like "(area chair)". */
 function nameQueryMatchesDisplay(rawName, query) {
   const display = facultyDisplayName(rawName);
-  const pattern = query.replace(/\*/g, ".*").replace(/\?/g, ".");
-  try {
-    return new RegExp(pattern, "i").test(display);
-  } catch {
-    return display.toLowerCase().includes(query.toLowerCase());
-  }
+  return wildcardQueryToRegex(query.trim()).test(display);
+}
+
+/** Same rules as backend extensive research search: research text or any paper title. */
+function researchMatchesWildcard(f, query) {
+  const regex = wildcardQueryToRegex(query.trim());
+  const researchText = (f.researchAreas || "").toLowerCase();
+  if (regex.test(researchText)) return true;
+  const papers = f.papers || [];
+  return papers.some((p) => regex.test((p.title || "").toLowerCase()));
+}
+
+/**
+ * Text before the first * or ?, for fallback when the API only does literal substring search
+ * (older deployments). Returns null if there is no wildcard or it starts the pattern.
+ */
+function literalPrefixBeforeWildcard(q) {
+  const idx = q.search(/[*?]/);
+  if (idx <= 0) return null;
+  const prefix = q.slice(0, idx).trim();
+  return prefix.length > 0 ? prefix : null;
 }
 
 export default function App() {
@@ -45,22 +61,24 @@ export default function App() {
     setError(null);
     const API_BASE =
       "https://purdue-ece-faculty-1059389140575.us-central1.run.app";
-    try {
+    const q = query.trim();
+
+    async function runSearch(searchQuery) {
       const extensiveEndpoint =
         searchType === "name"
           ? `${API_BASE}/api/faculty/search/extensive/name?query=${encodeURIComponent(
-              query
+              searchQuery,
             )}`
           : `${API_BASE}/api/faculty/search/extensive/research?query=${encodeURIComponent(
-              query
+              searchQuery,
             )}`;
       const basicEndpoint =
         searchType === "name"
           ? `${API_BASE}/api/faculty/search/name?query=${encodeURIComponent(
-              query
+              searchQuery,
             )}`
           : `${API_BASE}/api/faculty/search/research?query=${encodeURIComponent(
-              query
+              searchQuery,
             )}`;
 
       let res = await fetch(extensiveEndpoint);
@@ -72,15 +90,39 @@ export default function App() {
         if (res.ok)
           setError("Scholar data still loading. Showing basic results.");
       }
+      return { res, data };
+    }
+
+    try {
+      let { res, data } = await runSearch(q);
+
       if (!res.ok) {
         setError(data.error || "Search failed");
         setResults([]);
         return;
       }
+
       let list = data.results || [];
-      if (searchType === "name") {
-        list = list.filter((f) => nameQueryMatchesDisplay(f.name, query.trim()));
+
+      const prefix = literalPrefixBeforeWildcard(q);
+      const needsWildcardFallback =
+        list.length === 0 && /[?*]/.test(q) && prefix != null;
+
+      if (needsWildcardFallback) {
+        const second = await runSearch(prefix);
+        if (second.res.ok && (second.data.results || []).length > 0) {
+          list = second.data.results || [];
+          data = second.data;
+          if (searchType === "name") {
+            list = list.filter((f) => nameQueryMatchesDisplay(f.name, q));
+          } else {
+            list = list.filter((f) => researchMatchesWildcard(f, q));
+          }
+        }
+      } else if (searchType === "name") {
+        list = list.filter((f) => nameQueryMatchesDisplay(f.name, q));
       }
+
       setResults(list);
       if (data.scholarReady) setError(null);
     } catch (err) {

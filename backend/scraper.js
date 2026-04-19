@@ -1,6 +1,6 @@
 import * as cheerio from "cheerio";
 import fetch from "node-fetch";
-import natural from "natural";
+import { wildcardQueryToRegex } from "../shared/wildcardPattern.js";
 
 const BASE_URL = "https://engineering.purdue.edu";
 const FACULTY_LIST_URL = `${BASE_URL}/ECE/People/Faculty`;
@@ -162,20 +162,16 @@ export async function scrapeFacultyData() {
 }
 
 export function searchByName(facultyData, query) {
-  const regex = new RegExp(query.replace(/\*/g, ".*").replace(/\?/g, "."), "i");
+  const regex = wildcardQueryToRegex(query.trim());
   return facultyData.filter((faculty) =>
     regex.test(normalizeFacultyName(faculty.name)),
   );
 }
 
 export function searchByResearchArea(facultyData, query) {
-  const stemmer = natural.PorterStemmer;
-  const queryStem = stemmer.stem(query.toLowerCase());
+  const regex = wildcardQueryToRegex(query.trim());
   return facultyData.filter((faculty) => {
-    const researchText = faculty.researchAreas.toLowerCase();
-    if (researchText.includes(query.toLowerCase())) return true;
-    return researchText
-      .split(/\s+/)
-      .some((word) => stemmer.stem(word) === queryStem);
+    const researchText = (faculty.researchAreas || "").toLowerCase();
+    return regex.test(researchText);
   });
 }

@@ -1,5 +1,5 @@
-import natural from "natural";
 import { normalizeFacultyName } from "./scraper.js";
+import { wildcardQueryToRegex } from "../shared/wildcardPattern.js";
 
 const OA_BASE = "https://api.openalex.org";
 const PURDUE_ID = "I219193219";
@@ -367,32 +367,25 @@ export async function fetchAllScholarData(facultyData) {
 }
 
 export function extensiveSearchByName(facultyData, scholarData, query) {
-  const regex = new RegExp(query.replace(/\*/g, ".*").replace(/\?/g, "."), "i");
+  const regex = wildcardQueryToRegex(query.trim());
   return facultyData
     .filter((f) => regex.test(normalizeFacultyName(f.name)))
     .map((f) => ({ ...f, papers: scholarData[f.name] || [] }));
 }
 
 export function extensiveSearchByResearchArea(facultyData, scholarData, query) {
-  const stemmer = natural.PorterStemmer;
-  const queryStem = stemmer.stem(query.toLowerCase());
-  const queryLower = query.toLowerCase();
+  const regex = wildcardQueryToRegex(query.trim());
   const results = [];
 
   for (const faculty of facultyData) {
     const papers = scholarData[faculty.name] || [];
     const researchText = (faculty.researchAreas || "").toLowerCase();
 
-    const matchedInResearch =
-      researchText.includes(queryLower) ||
-      researchText.split(/\s+/).some((w) => stemmer.stem(w) === queryStem);
+    const matchedInResearch = regex.test(researchText);
 
     const matchedInPapers = papers.some((paper) => {
-      const text = paper.title.toLowerCase();
-      return (
-        text.includes(queryLower) ||
-        text.split(/\s+/).some((w) => stemmer.stem(w) === queryStem)
-      );
+      const text = (paper.title || "").toLowerCase();
+      return regex.test(text);
     });
 
     if (matchedInResearch || matchedInPapers) {
