@@ -5,7 +5,10 @@ import bannerImage from "../bannerImage.png";
 /** Strip role tags in parentheses (e.g. "area chair") so cards show personal names only. */
 function facultyDisplayName(raw) {
   if (!raw || typeof raw !== "string") return "";
-  let s = raw.replace(/"/g, " ").replace(/^Dr\.\s*/i, "").trim();
+  let s = raw
+    .replace(/"/g, " ")
+    .replace(/^Dr\.\s*/i, "")
+    .trim();
   let prev;
   do {
     prev = s;
@@ -24,13 +27,41 @@ function nameQueryMatchesDisplay(rawName, query) {
   return wildcardQueryToRegex(query.trim()).test(display);
 }
 
-/** Same rules as backend extensive research search: research text or any paper title. */
+/** Same rules as backend extensive research search: research text or paper title/abstract. */
 function researchMatchesWildcard(f, query) {
   const regex = wildcardQueryToRegex(query.trim());
   const researchText = (f.researchAreas || "").toLowerCase();
   if (regex.test(researchText)) return true;
   const papers = f.papers || [];
-  return papers.some((p) => regex.test((p.title || "").toLowerCase()));
+  return papers.some((p) => {
+    const t = (p.title || "").toLowerCase();
+    const a = (p.abstract || "").toLowerCase();
+    return regex.test(t) || regex.test(a);
+  });
+}
+
+function textMatchesQuery(text, query) {
+  const q = query.trim();
+  if (!q || text == null || text === "") return false;
+  return wildcardQueryToRegex(q).test(String(text));
+}
+
+/** True if the query matches something shown on the card (research blurb or first 5 papers). */
+function hasVisibleResearchHighlight(f, query) {
+  const q = query.trim();
+  if (!q) return true;
+  if (textMatchesQuery(f.researchAreas || "", query)) return true;
+  const papers = f.papers || [];
+  for (let i = 0; i < Math.min(5, papers.length); i++) {
+    const p = papers[i];
+    if (
+      textMatchesQuery(p.title || "", query) ||
+      textMatchesQuery(p.abstract || "", query)
+    ) {
+      return true;
+    }
+  }
+  return false;
 }
 
 /**
@@ -42,6 +73,38 @@ function literalPrefixBeforeWildcard(q) {
   if (idx <= 0) return null;
   const prefix = q.slice(0, idx).trim();
   return prefix.length > 0 ? prefix : null;
+}
+
+/**
+ * Wraps regex matches in <mark> using the same wildcard rules as search.
+ */
+function HighlightText({ text, query, enabled }) {
+  const q = query.trim();
+  if (!enabled || !text || !q) return text;
+  const base = wildcardQueryToRegex(q);
+  const flags = base.flags.includes("g") ? base.flags : base.flags + "g";
+  const g = new RegExp(base.source, flags);
+  const parts = [];
+  let lastIndex = 0;
+  let m;
+  let k = 0;
+  while ((m = g.exec(text)) !== null) {
+    if (m[0].length === 0) {
+      if (g.lastIndex === m.index) g.lastIndex++;
+      if (g.lastIndex > text.length) break;
+      continue;
+    }
+    parts.push(text.slice(lastIndex, m.index));
+    parts.push(
+      <mark className="search-highlight" key={`mk-${m.index}-${k++}`}>
+        {m[0]}
+      </mark>
+    );
+    lastIndex = m.index + m[0].length;
+  }
+  if (parts.length === 0) return text;
+  parts.push(text.slice(lastIndex));
+  return <>{parts}</>;
 }
 
 export default function App() {
@@ -67,18 +130,18 @@ export default function App() {
       const extensiveEndpoint =
         searchType === "name"
           ? `${API_BASE}/api/faculty/search/extensive/name?query=${encodeURIComponent(
-              searchQuery,
+              searchQuery
             )}`
           : `${API_BASE}/api/faculty/search/extensive/research?query=${encodeURIComponent(
-              searchQuery,
+              searchQuery
             )}`;
       const basicEndpoint =
         searchType === "name"
           ? `${API_BASE}/api/faculty/search/name?query=${encodeURIComponent(
-              searchQuery,
+              searchQuery
             )}`
           : `${API_BASE}/api/faculty/search/research?query=${encodeURIComponent(
-              searchQuery,
+              searchQuery
             )}`;
 
       let res = await fetch(extensiveEndpoint);
@@ -215,7 +278,17 @@ export default function App() {
               found
             </p>
             <ul className="results">
-              {results.map((f) => (
+              {results.map((f) => {
+                const researchAreasMatch =
+                  searchType === "research" &&
+                  textMatchesQuery(f.researchAreas || "", query);
+                const highlightSeeMoreButton =
+                  f.seeMoreUrl &&
+                  query.trim() &&
+                  (searchType === "research"
+                    ? !hasVisibleResearchHighlight(f, query)
+                    : !textMatchesQuery(facultyDisplayName(f.name), query));
+                return (
                 <li key={f.profileUrl}>
                   {f.website ? (
                     <a
@@ -223,11 +296,19 @@ export default function App() {
                       target="_blank"
                       rel="noopener noreferrer"
                     >
-                      {facultyDisplayName(f.name)}
+                      <HighlightText
+                        text={facultyDisplayName(f.name)}
+                        query={query}
+                        enabled={searchType === "name"}
+                      />
                     </a>
                   ) : (
                     <span className="professor-name-plain">
-                      {facultyDisplayName(f.name)}
+                      <HighlightText
+                        text={facultyDisplayName(f.name)}
+                        query={query}
+                        enabled={searchType === "name"}
+                      />
                     </span>
                   )}
                   <div className="research">
@@ -236,26 +317,66 @@ export default function App() {
                         <strong className="research-areas-heading">
                           Research areas
                         </strong>
-                        <div>{f.researchAreas}</div>
+                        <div>
+                          <HighlightText
+                            text={f.researchAreas}
+                            query={query}
+                            enabled={searchType === "research"}
+                          />
+                        </div>
                       </>
                     )}
                     <div className="openalex">
                       <strong>Recent publications</strong>
                       {f.papers?.length > 0 ? (
                         <ul>
-                          {f.papers.slice(0, 5).map((p, i) => (
-                            <li key={i}>
-                              <a
-                                href={p.url}
-                                target="_blank"
-                                rel="noopener noreferrer"
-                              >
-                                {p.title}
-                              </a>
-                              {p.year && ` (${p.year})`}
-                              {p.citedBy > 0 && ` — ${p.citedBy} citations`}
-                            </li>
-                          ))}
+                          {f.papers.slice(0, 5).map((p, i) => {
+                            const paperHit =
+                              searchType === "research" &&
+                              (textMatchesQuery(p.title || "", query) ||
+                                textMatchesQuery(p.abstract || "", query));
+                            const fullTitleHighlight =
+                              paperHit &&
+                              !researchAreasMatch;
+                            return (
+                              <li key={i} className="publication-row">
+                                <a
+                                  href={p.url}
+                                  target="_blank"
+                                  rel="noopener noreferrer"
+                                  className="paper-link"
+                                >
+                                  {fullTitleHighlight ? (
+                                    <mark className="search-highlight search-highlight--full-title">
+                                      {p.title || ""}
+                                    </mark>
+                                  ) : (
+                                    <HighlightText
+                                      text={p.title || ""}
+                                      query={query}
+                                      enabled={searchType === "research"}
+                                    />
+                                  )}
+                                </a>
+                                {p.year && ` (${p.year})`}
+                                {p.citedBy > 0 && ` — ${p.citedBy} citations`}
+                                {p.abstract ? (
+                                  <div className="paper-abstract">
+                                    <span className="paper-abstract-label">
+                                      Abstract:{" "}
+                                    </span>
+                                    <span className="paper-abstract-text">
+                                      <HighlightText
+                                        text={p.abstract}
+                                        query={query}
+                                        enabled={searchType === "research"}
+                                      />
+                                    </span>
+                                  </div>
+                                ) : null}
+                              </li>
+                            );
+                          })}
                         </ul>
                       ) : (
                         <div className="no-publications-msg">
@@ -267,7 +388,11 @@ export default function App() {
                           href={f.seeMoreUrl}
                           target="_blank"
                           rel="noopener noreferrer"
-                          className="scholar-link-button"
+                          className={
+                            highlightSeeMoreButton
+                              ? "scholar-link-button scholar-link-button--search-hit"
+                              : "scholar-link-button"
+                          }
                         >
                           See more
                         </a>
@@ -275,7 +400,8 @@ export default function App() {
                     </div>
                   </div>
                 </li>
-              ))}
+                );
+              })}
             </ul>
           </div>
         )}

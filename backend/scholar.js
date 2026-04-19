@@ -57,6 +57,32 @@ function isJunkTitle(title) {
   return JUNK_TITLE_PATTERNS.some((p) => p.test(title.trim()));
 }
 
+/**
+ * OpenAlex stores abstracts as an inverted index (word -> positions).
+ * Reconstructs plain text for search and display.
+ */
+function abstractFromInvertedIndex(inv) {
+  if (!inv || typeof inv !== "object") return "";
+  let max = -1;
+  for (const positions of Object.values(inv)) {
+    const list = Array.isArray(positions) ? positions : [positions];
+    for (const p of list) {
+      const n = Number(p);
+      if (Number.isFinite(n) && n > max) max = n;
+    }
+  }
+  if (max < 0) return "";
+  const words = new Array(max + 1);
+  for (const [word, positions] of Object.entries(inv)) {
+    const list = Array.isArray(positions) ? positions : [positions];
+    for (const pos of list) {
+      const i = Number(pos);
+      if (Number.isFinite(i) && i >= 0) words[i] = word;
+    }
+  }
+  return words.filter(Boolean).join(" ");
+}
+
 function delay(ms) {
   return new Promise((resolve) => setTimeout(resolve, ms));
 }
@@ -166,7 +192,7 @@ async function fetchAuthorPapers(authorId, startYear) {
     const url =
       `${OA_BASE}/works?filter=author.id:${authorId},publication_year:>${startYear - 1}` +
       `&sort=publication_year:desc&per_page=${PER_PAGE}&cursor=${cursor}` +
-      `&select=display_name,publication_year,primary_location,doi,cited_by_count,id&${MAILTO}`;
+      `&select=display_name,publication_year,primary_location,doi,cited_by_count,id,abstract_inverted_index&${MAILTO}`;
 
     try {
       const res = await fetch(url);
@@ -180,8 +206,12 @@ async function fetchAuthorPapers(authorId, startYear) {
         if (!title || isJunkTitle(title)) continue;
 
         const venue = work.primary_location?.source?.display_name || "";
+        const abstract = abstractFromInvertedIndex(
+          work.abstract_inverted_index,
+        );
         allPapers.push({
           title,
+          abstract,
           url:
             work.doi ||
             `https://openalex.org/${work.id?.replace("https://openalex.org/", "")}`,
@@ -278,6 +308,7 @@ export async function fetchScholarPapers(scholarId, startYear) {
 
         allPapers.push({
           title,
+          abstract: "",
           url: paperUrl,
           meta: venue || (year ? String(year) : ""),
           year: year || null,
@@ -384,8 +415,9 @@ export function extensiveSearchByResearchArea(facultyData, scholarData, query) {
     const matchedInResearch = regex.test(researchText);
 
     const matchedInPapers = papers.some((paper) => {
-      const text = (paper.title || "").toLowerCase();
-      return regex.test(text);
+      const title = (paper.title || "").toLowerCase();
+      const abs = (paper.abstract || "").toLowerCase();
+      return regex.test(title) || regex.test(abs);
     });
 
     if (matchedInResearch || matchedInPapers) {
