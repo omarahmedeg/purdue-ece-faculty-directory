@@ -122,8 +122,12 @@ export default function App() {
     setHasSearched(true);
     setLoading(true);
     setError(null);
+    // Local dev uses your machine + backend/data/cache.json. Production build uses Cloud Run unless VITE_API_BASE is set.
     const API_BASE =
-      "https://purdue-ece-faculty-1059389140575.us-central1.run.app";
+      import.meta.env.VITE_API_BASE ||
+      (import.meta.env.DEV
+        ? "http://localhost:8080"
+        : "https://purdue-ece-faculty-1059389140575.us-central1.run.app");
     const q = query.trim();
 
     async function runSearch(searchQuery) {
