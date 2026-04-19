@@ -5,6 +5,25 @@ import natural from "natural";
 const BASE_URL = "https://engineering.purdue.edu";
 const FACULTY_LIST_URL = `${BASE_URL}/ECE/People/Faculty`;
 
+/**
+ * Strips parenthetical role tags (e.g. "(area chair)") and normalizes whitespace
+ * so displayed names are person names only.
+ */
+export function normalizeFacultyName(raw) {
+  if (!raw || typeof raw !== "string") return "";
+  let s = raw.replace(/"/g, " ").replace(/^Dr\.\s*/i, "").trim();
+  let prev;
+  do {
+    prev = s;
+    s = s
+      .replace(/\s*\([^)]*\)/g, " ")
+      .replace(/\s*\uFF08[^\uFF09]*\uFF09/g, " ")
+      .replace(/\s+/g, " ")
+      .trim();
+  } while (s !== prev);
+  return s;
+}
+
 export async function scrapeFacultyList() {
   try {
     const response = await fetch(FACULTY_LIST_URL);
@@ -14,7 +33,7 @@ export async function scrapeFacultyList() {
 
     $('a[href*="/ECE/People/ptProfile"]').each((i, element) => {
       const href = $(element).attr("href");
-      const name = $(element).text().trim();
+      const name = normalizeFacultyName($(element).text());
       if (name && href && !facultyList.some((f) => f.profileUrl === href)) {
         facultyList.push({
           name,
@@ -144,7 +163,9 @@ export async function scrapeFacultyData() {
 
 export function searchByName(facultyData, query) {
   const regex = new RegExp(query.replace(/\*/g, ".*").replace(/\?/g, "."), "i");
-  return facultyData.filter((faculty) => regex.test(faculty.name));
+  return facultyData.filter((faculty) =>
+    regex.test(normalizeFacultyName(faculty.name)),
+  );
 }
 
 export function searchByResearchArea(facultyData, query) {

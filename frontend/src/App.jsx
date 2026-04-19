@@ -1,6 +1,33 @@
 import { useState } from "react";
 import bannerImage from "../bannerImage.png";
 
+/** Strip role tags in parentheses (e.g. "area chair") so cards show personal names only. */
+function facultyDisplayName(raw) {
+  if (!raw || typeof raw !== "string") return "";
+  let s = raw.replace(/"/g, " ").replace(/^Dr\.\s*/i, "").trim();
+  let prev;
+  do {
+    prev = s;
+    s = s
+      .replace(/\s*\([^)]*\)/g, " ")
+      .replace(/\s*\uFF08[^\uFF09]*\uFF09/g, " ")
+      .replace(/\s+/g, " ")
+      .trim();
+  } while (s !== prev);
+  return s;
+}
+
+/** Name search must match the visible name only, not hidden role text like "(area chair)". */
+function nameQueryMatchesDisplay(rawName, query) {
+  const display = facultyDisplayName(rawName);
+  const pattern = query.replace(/\*/g, ".*").replace(/\?/g, ".");
+  try {
+    return new RegExp(pattern, "i").test(display);
+  } catch {
+    return display.toLowerCase().includes(query.toLowerCase());
+  }
+}
+
 export default function App() {
   const [query, setQuery] = useState("");
   const [searchType, setSearchType] = useState("name");
@@ -50,7 +77,11 @@ export default function App() {
         setResults([]);
         return;
       }
-      setResults(data.results || []);
+      let list = data.results || [];
+      if (searchType === "name") {
+        list = list.filter((f) => nameQueryMatchesDisplay(f.name, query.trim()));
+      }
+      setResults(list);
       if (data.scholarReady) setError(null);
     } catch (err) {
       setError("Could not reach the server. Please try again later.");
@@ -150,10 +181,12 @@ export default function App() {
                       target="_blank"
                       rel="noopener noreferrer"
                     >
-                      {f.name}
+                      {facultyDisplayName(f.name)}
                     </a>
                   ) : (
-                    <span className="professor-name-plain">{f.name}</span>
+                    <span className="professor-name-plain">
+                      {facultyDisplayName(f.name)}
+                    </span>
                   )}
                   <div className="research">
                     {f.researchAreas && (

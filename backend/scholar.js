@@ -1,4 +1,5 @@
 import natural from "natural";
+import { normalizeFacultyName } from "./scraper.js";
 
 const OA_BASE = "https://api.openalex.org";
 const PURDUE_ID = "I219193219";
@@ -368,7 +369,7 @@ export async function fetchAllScholarData(facultyData) {
 export function extensiveSearchByName(facultyData, scholarData, query) {
   const regex = new RegExp(query.replace(/\*/g, ".*").replace(/\?/g, "."), "i");
   return facultyData
-    .filter((f) => regex.test(f.name))
+    .filter((f) => regex.test(normalizeFacultyName(f.name)))
     .map((f) => ({ ...f, papers: scholarData[f.name] || [] }));
 }
 

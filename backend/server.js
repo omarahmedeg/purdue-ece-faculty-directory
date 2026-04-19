@@ -4,6 +4,7 @@ import { readFileSync } from "fs";
 import path from "path";
 import { fileURLToPath } from "url";
 import {
+  normalizeFacultyName,
   searchByName,
   searchByResearchArea,
   scrapeFacultyData,
@@ -27,14 +28,32 @@ function loadSeeMoreOverrides() {
   }
 }
 
+function lookupSeeMoreUrl(rawName, seeMoreOverrides) {
+  const candidates = [rawName, normalizeFacultyName(rawName)];
+  for (const key of candidates) {
+    const u = seeMoreOverrides[key]?.seeMoreUrl;
+    if (u && u !== SEE_MORE_PLACEHOLDER) return u;
+  }
+  const target = normalizeFacultyName(rawName);
+  for (const k of Object.keys(seeMoreOverrides)) {
+    if (normalizeFacultyName(k) === target) {
+      const u = seeMoreOverrides[k]?.seeMoreUrl;
+      if (u && u !== SEE_MORE_PLACEHOLDER) return u;
+    }
+  }
+  return null;
+}
+
 function applySeeMoreOverrides(results) {
   const seeMoreOverrides = loadSeeMoreOverrides();
   return results.map((r) => {
-    const override = seeMoreOverrides[r.name]?.seeMoreUrl;
-    const seeMoreUrl =
-      override && override !== SEE_MORE_PLACEHOLDER ? override : null;
-    return { ...r, seeMoreUrl };
+    const seeMoreUrl = lookupSeeMoreUrl(r.name, seeMoreOverrides);
+    return { ...r, name: normalizeFacultyName(r.name), seeMoreUrl };
   });
+}
+
+function withNormalizedNames(results) {
+  return results.map((r) => ({ ...r, name: normalizeFacultyName(r.name) }));
 }
 
 const app = express();
@@ -105,7 +124,7 @@ app.get("/api/faculty/search/name", (req, res) => {
   if (!query)
     return res.status(400).json({ error: "Query parameter is required" });
   const results = searchByName(facultyData, query);
-  res.json({ results, count: results.length });
+  res.json({ results: withNormalizedNames(results), count: results.length });
 });
 
 app.get("/api/faculty/search/research", (req, res) => {
@@ -113,7 +132,7 @@ app.get("/api/faculty/search/research", (req, res) => {
   if (!query)
     return res.status(400).json({ error: "Query parameter is required" });
   const results = searchByResearchArea(facultyData, query);
-  res.json({ results, count: results.length });
+  res.json({ results: withNormalizedNames(results), count: results.length });
 });
 
 app.get("/api/faculty/search/extensive/name", (req, res) => {
