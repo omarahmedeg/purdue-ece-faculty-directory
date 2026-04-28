@@ -216,9 +216,10 @@ body {
 }
 
 .results > li > .professor-name-plain,
-.faculty-name-row > .professor-name-plain {
+.faculty-name-row > .professor-name-plain,
+.faculty-name-link > .professor-name-plain {
   font-size: 1.6rem;
-  font-weight: 700;
+  font-weight: 800;
   display: inline-block;
   margin-bottom: 0.35rem;
 }
@@ -226,6 +227,18 @@ body {
 .results > li > .professor-name-plain,
 .faculty-name-row > .professor-name-plain {
   color: #764e34;
+}
+
+.faculty-name-link {
+  color: inherit;
+  text-decoration: none;
+}
+
+.faculty-name-link:visited,
+.faculty-name-link:hover,
+.faculty-name-link:active {
+  color: inherit;
+  text-decoration: none;
 }
 
 .faculty-name-row {
@@ -266,6 +279,20 @@ body {
 
 .results a:hover {
   text-decoration: underline;
+}
+
+/* Keep faculty profile links visually identical to plain name text */
+.results .faculty-name-link,
+.results .faculty-name-link:visited,
+.results .faculty-name-link:hover,
+.results .faculty-name-link:active {
+  color: #764e34;
+  text-decoration: none;
+}
+
+.results .faculty-name-link:hover > .professor-name-plain {
+  text-decoration: underline;
+  text-underline-offset: 2px;
 }
 
 /* Text-only highlighter (no padded box — yellow sits on the glyphs) */

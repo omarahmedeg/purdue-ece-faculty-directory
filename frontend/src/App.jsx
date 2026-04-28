@@ -296,13 +296,20 @@ export default function App() {
                 return (
                 <li key={f.profileUrl}>
                   <div className="faculty-name-row">
-                    <span className="professor-name-plain">
-                      <HighlightText
-                        text={facultyDisplayName(f.name)}
-                        query={query}
-                        enabled={searchType === "name"}
-                      />
-                    </span>
+                    <a
+                      href={f.profileUrl}
+                      target="_blank"
+                      rel="noopener noreferrer"
+                      className="faculty-name-link"
+                    >
+                      <span className="professor-name-plain">
+                        <HighlightText
+                          text={facultyDisplayName(f.name)}
+                          query={query}
+                          enabled={searchType === "name"}
+                        />
+                      </span>
+                    </a>
                     {f.website ? (
                       <a
                         href={f.website}
