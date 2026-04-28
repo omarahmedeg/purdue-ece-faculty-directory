@@ -215,16 +215,48 @@ body {
   box-shadow: 0 1px 3px rgba(0, 0, 0, 0.06);
 }
 
-.results > li > a,
-.results > li > .professor-name-plain {
+.results > li > .professor-name-plain,
+.faculty-name-row > .professor-name-plain {
   font-size: 1.6rem;
-  font-weight: bold;
+  font-weight: 700;
   display: inline-block;
   margin-bottom: 0.35rem;
 }
 
-.results > li > .professor-name-plain {
-  color: #79523c;
+.results > li > .professor-name-plain,
+.faculty-name-row > .professor-name-plain {
+  color: #764e34;
+}
+
+.faculty-name-row {
+  display: flex;
+  align-items: baseline;
+  gap: 0.35rem;
+  margin-bottom: 0.35rem;
+}
+
+.name-open-button {
+  display: inline-flex;
+  align-items: center;
+  justify-content: center;
+  width: 1.15rem;
+  height: 1.15rem;
+  flex: 0 0 auto;
+  margin-left: 0.65rem;
+  transform: translateY(-1.2px);
+  text-decoration: none;
+}
+
+.name-open-button img {
+  width: 100%;
+  height: 100%;
+  object-fit: contain;
+  display: block;
+}
+
+.name-open-button:hover {
+  transform: translateY(-1px);
+  text-decoration: none;
 }
 
 .results a {

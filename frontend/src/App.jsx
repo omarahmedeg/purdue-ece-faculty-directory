@@ -1,6 +1,7 @@
 import { useState } from "react";
 import { wildcardQueryToRegex } from "@shared/wildcardPattern.js";
 import bannerImage from "../bannerImage.png";
+import newTabButtonIcon from "../newTabButton.png";
 
 /** Strip role tags in parentheses (e.g. "area chair") so cards show personal names only. */
 function facultyDisplayName(raw) {
@@ -294,19 +295,7 @@ export default function App() {
                     : !textMatchesQuery(facultyDisplayName(f.name), query));
                 return (
                 <li key={f.profileUrl}>
-                  {f.website ? (
-                    <a
-                      href={f.website}
-                      target="_blank"
-                      rel="noopener noreferrer"
-                    >
-                      <HighlightText
-                        text={facultyDisplayName(f.name)}
-                        query={query}
-                        enabled={searchType === "name"}
-                      />
-                    </a>
-                  ) : (
+                  <div className="faculty-name-row">
                     <span className="professor-name-plain">
                       <HighlightText
                         text={facultyDisplayName(f.name)}
@@ -314,7 +303,21 @@ export default function App() {
                         enabled={searchType === "name"}
                       />
                     </span>
-                  )}
+                    {f.website ? (
+                      <a
+                        href={f.website}
+                        target="_blank"
+                        rel="noopener noreferrer"
+                        className="name-open-button"
+                        aria-label={`Open ${facultyDisplayName(
+                          f.name,
+                        )} personal website in a new tab`}
+                        title="Open personal website in new tab"
+                      >
+                        <img src={newTabButtonIcon} alt="" aria-hidden="true" />
+                      </a>
+                    ) : null}
+                  </div>
                   <div className="research">
                     {f.researchAreas && (
                       <>
