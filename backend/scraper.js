@@ -1,6 +1,6 @@
 import * as cheerio from "cheerio";
 import fetch from "node-fetch";
-import { wildcardQueryToRegex } from "../shared/wildcardPattern.js";
+import { wildcardQueryToRegex } from "./shared/wildcardPattern.js";
 
 const BASE_URL = "https://engineering.purdue.edu";
 const FACULTY_LIST_URL = `${BASE_URL}/ECE/People/Faculty`;

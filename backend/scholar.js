@@ -1,5 +1,5 @@
 import { normalizeFacultyName } from "./scraper.js";
-import { wildcardQueryToRegex } from "../shared/wildcardPattern.js";
+import { wildcardQueryToRegex } from "./shared/wildcardPattern.js";
 
 const OA_BASE = "https://api.openalex.org";
 const PURDUE_ID = "I219193219";
