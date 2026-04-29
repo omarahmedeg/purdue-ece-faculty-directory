@@ -374,20 +374,6 @@ export default function App() {
                                 </a>
                                 {p.year && ` (${p.year})`}
                                 {p.citedBy > 0 && ` — ${p.citedBy} citations`}
-                                {p.abstract ? (
-                                  <div className="paper-abstract">
-                                    <span className="paper-abstract-label">
-                                      Abstract:{" "}
-                                    </span>
-                                    <span className="paper-abstract-text">
-                                      <HighlightText
-                                        text={p.abstract}
-                                        query={query}
-                                        enabled={searchType === "research"}
-                                      />
-                                    </span>
-                                  </div>
-                                ) : null}
                               </li>
                             );
                           })}
