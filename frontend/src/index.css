@@ -295,19 +295,6 @@ body {
   text-underline-offset: 2px;
 }
 
-/* Text-only highlighter (no padded box — yellow sits on the glyphs) */
-.results .search-highlight,
-.results .search-highlight--full-title {
-  background-color: rgba(255, 245, 120, 0.85);
-  color: inherit;
-  font-weight: inherit;
-  padding: 0;
-  margin: 0;
-  border-radius: 0;
-  box-decoration-break: clone;
-  -webkit-box-decoration-break: clone;
-}
-
 .results .research {
   font-size: 0.9rem;
   color: #5b5b5b;
@@ -362,19 +349,6 @@ body {
 .scholar-link-button:hover {
   background: #b8a38a;
   text-decoration: none;
-}
-
-/* Match is only outside visible blurb / first 5 papers — draw eye to external profile */
-.scholar-link-button--search-hit {
-  background-color: rgba(255, 245, 120, 0.95);
-  color: #2a1f14;
-  font-weight: 600;
-  border: 1px solid rgba(200, 160, 70, 0.55);
-}
-
-.scholar-link-button--search-hit:hover {
-  background-color: rgba(255, 235, 100, 1);
-  color: #1a120a;
 }
 
 .no-publications-msg {
