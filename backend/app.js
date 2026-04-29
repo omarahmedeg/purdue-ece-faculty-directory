@@ -216,15 +216,15 @@ app.get("/api/faculty/refresh", (req, res) => {
 // Initialize cache on module load (works for local + serverless cold starts)
 loadFromCache();
 
-// If empty cache, trigger initial scrape in background
-if (facultyData.length === 0) {
-  console.log("Cache is empty – starting initial scrape...");
-  refreshInProgress = true;
-  runScrapeAndCache().catch((err) => {
-    console.error("Initial scrape failed:", err);
-    refreshInProgress = false;
-  });
-}
+// NOTE: Do not auto-scrape on cold start in serverless environments (e.g. Vercel).
+// Scraping is network-heavy and can time out / crash invocations. Use /api/faculty/refresh explicitly.
+
+// Defensive: keep serverless invocations from crashing on unhandled errors.
+app.use((err, req, res, next) => {
+  console.error("Unhandled error:", err);
+  if (res.headersSent) return next(err);
+  res.status(500).json({ error: "Internal server error" });
+});
 
 export default app;
 
