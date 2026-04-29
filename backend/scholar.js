@@ -4,6 +4,7 @@ import { wildcardQueryToRegex } from "../shared/wildcardPattern.js";
 const OA_BASE = "https://api.openalex.org";
 const PURDUE_ID = "I219193219";
 const MAILTO = "mailto=scholar-tool@purdue.edu";
+const DISPLAY_PAPER_COUNT = 5;
 
 /**
  * Manual Google Scholar user-ID overrides for professors whose names are not
@@ -206,12 +207,10 @@ async function fetchAuthorPapers(authorId, startYear) {
         if (!title || isJunkTitle(title)) continue;
 
         const venue = work.primary_location?.source?.display_name || "";
-        const abstract = abstractFromInvertedIndex(
-          work.abstract_inverted_index,
-        );
+        const abstract = abstractFromInvertedIndex(work.abstract_inverted_index);
         allPapers.push({
           title,
-          abstract,
+          abstract: abstract || "",
           url:
             work.doi ||
             `https://openalex.org/${work.id?.replace("https://openalex.org/", "")}`,
@@ -239,7 +238,9 @@ async function fetchAuthorPapers(authorId, startYear) {
     }
   }
 
-  return [...seen.values()].sort((a, b) => (b.year || 0) - (a.year || 0));
+  return [...seen.values()]
+    .sort((a, b) => (b.year || 0) - (a.year || 0))
+    .slice(0, DISPLAY_PAPER_COUNT);
 }
 
 /**
@@ -336,7 +337,9 @@ export async function fetchScholarPapers(scholarId, startYear) {
     }
   }
 
-  return [...seen.values()].sort((a, b) => (b.year || 0) - (a.year || 0));
+  return [...seen.values()]
+    .sort((a, b) => (b.year || 0) - (a.year || 0))
+    .slice(0, DISPLAY_PAPER_COUNT);
 }
 
 async function fetchProfessorPapers(professorName, startYear) {
@@ -409,7 +412,7 @@ export function extensiveSearchByResearchArea(facultyData, scholarData, query) {
   const results = [];
 
   for (const faculty of facultyData) {
-    const papers = scholarData[faculty.name] || [];
+    const papers = (scholarData[faculty.name] || []).slice(0, DISPLAY_PAPER_COUNT);
     const researchText = (faculty.researchAreas || "").toLowerCase();
 
     const matchedInResearch = regex.test(researchText);
