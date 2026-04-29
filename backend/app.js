@@ -61,6 +61,13 @@ const app = express();
 app.use(cors());
 app.use(express.json());
 
+app.get("/", (req, res) => {
+  res
+    .status(200)
+    .type("text")
+    .send("Purdue ECE Faculty Directory API is running.");
+});
+
 // ── In-memory state (loaded from cache at startup) ──────────────────────────
 let facultyData = [];
 let scholarData = {};
