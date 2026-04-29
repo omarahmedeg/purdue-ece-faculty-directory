@@ -1,5 +1,6 @@
 import { normalizeFacultyName } from "./scraper.js";
 import { wildcardQueryToRegex } from "./shared/wildcardPattern.js";
+import { researchCorpusMatchesQuery } from "./researchQueryMatch.js";
 
 const OA_BASE = "https://api.openalex.org";
 const PURDUE_ID = "I219193219";
@@ -408,19 +409,17 @@ export function extensiveSearchByName(facultyData, scholarData, query) {
 }
 
 export function extensiveSearchByResearchArea(facultyData, scholarData, query) {
-  const regex = wildcardQueryToRegex(query.trim());
   const results = [];
 
   for (const faculty of facultyData) {
     const papers = (scholarData[faculty.name] || []).slice(0, DISPLAY_PAPER_COUNT);
-    const researchText = (faculty.researchAreas || "").toLowerCase();
+    const researchText = faculty.researchAreas || "";
 
-    const matchedInResearch = regex.test(researchText);
+    const matchedInResearch = researchCorpusMatchesQuery(researchText, query);
 
     const matchedInPapers = papers.some((paper) => {
-      const title = (paper.title || "").toLowerCase();
-      const abs = (paper.abstract || "").toLowerCase();
-      return regex.test(title) || regex.test(abs);
+      const corpus = `${paper.title || ""} ${paper.abstract || ""}`;
+      return researchCorpusMatchesQuery(corpus, query);
     });
 
     if (matchedInResearch || matchedInPapers) {
