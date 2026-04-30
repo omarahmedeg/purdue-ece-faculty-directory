@@ -14,7 +14,7 @@
     "cheerio": "*",
     "cors": "*",
     "express": "*",
-    "natural": "^8.1.1",
-    "node-fetch": "*"
+    "node-fetch": "*",
+    "stemmer": "^2.0.1"
   }
 }

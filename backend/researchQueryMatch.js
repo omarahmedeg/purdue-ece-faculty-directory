@@ -1,7 +1,5 @@
-import natural from "natural";
+import { stemmer as porterStem } from "stemmer";
 import { wildcardQueryToRegex } from "./shared/wildcardPattern.js";
-
-const stemmer = natural.PorterStemmer;
 
 function escapeRegex(s) {
   return String(s).replace(/[.*+?^${}()|[\]\\]/g, "\\$&");
@@ -83,10 +81,10 @@ function buildDocStemSet(text) {
   const stems = new Set();
   const words = allDocWords(text);
   for (const w of words) {
-    stems.add(stemmer.stem(w));
+    stems.add(porterStem(w));
     const exp = ACRONYM_EXPANSIONS[w];
     if (exp) {
-      for (const e of exp) stems.add(stemmer.stem(e));
+      for (const e of exp) stems.add(porterStem(e));
     }
   }
   return { stems, words };
@@ -97,7 +95,7 @@ function buildDocStemSet(text) {
  * or (for longer tokens) prefix overlap with a document word.
  */
 function tokenMatchesDocument(t, docStems, docWords) {
-  const qt = stemmer.stem(t);
+  const qt = porterStem(t);
   if (docStems.has(qt)) return true;
 
   if (t.length >= 3) {
